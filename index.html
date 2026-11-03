@@ -87,6 +87,15 @@ textarea{min-height:64px;resize:vertical}
 .toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translate(-50%,160%);background:var(--ok-bg);color:var(--ok);border:1px solid currentColor;border-radius:4px;padding:.7rem 1.1rem;font-weight:700;transition:transform .2s;max-width:calc(100% - 2rem);text-align:center;z-index:20}
 .toast.up{transform:translate(-50%,0)}
 .note{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--go);border-radius:4px;padding:.8rem .9rem;margin-top:1rem;color:var(--ink-2)}
+.steps{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-bottom:1rem}
+.steps button{min-height:52px;background:var(--field);border:1px solid var(--line);border-radius:4px;color:var(--ink);font:600 15px var(--sans);padding:.4rem .5rem;text-align:center}
+.steps button[aria-pressed="true"]{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.split{font-size:.82rem;font-weight:600;color:var(--warn);white-space:nowrap}
+.photo{display:flex;align-items:center;gap:.8rem;margin-bottom:1rem}
+.photo label{flex:1;display:flex;align-items:center;justify-content:center;min-height:58px;border:2px dashed var(--line);border-radius:4px;color:var(--ink-2);font:700 1rem var(--sans);cursor:pointer}
+.photo.has label{border-style:solid;border-color:var(--ok);color:var(--ok)}
+.photo img{width:58px;height:58px;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
+.photo input{position:absolute;width:1px;height:1px;opacity:0}
 </style>
 </head>
 <body>
@@ -99,7 +108,7 @@ textarea{min-height:64px;resize:vertical}
     </div>
   </div>
   <div class="tabs" role="tablist">
-    <button class="tab" id="tab-hours" role="tab"></button>
+    <button class="tab" id="tab-labor" role="tab"></button>
     <button class="tab" id="tab-costs" role="tab"></button>
     <button class="tab" id="tab-setup" role="tab"></button>
   </div>
@@ -109,7 +118,7 @@ textarea{min-height:64px;resize:vertical}
   <div class="note" id="nocfg" hidden></div>
   <div class="sync" id="sync" role="status"><span id="sync-t"></span><button type="button" id="sync-b" hidden></button></div>
 
-  <section id="v-hours">
+  <section id="v-labor">
     <div id="h-setup" class="card" hidden><div class="empty"><strong id="x-hs-t"></strong><span id="x-hs-b"></span></div>
       <button class="go" data-goto="setup" id="x-hs-btn"></button></div>
     <form id="h-form" class="card" hidden>
@@ -117,11 +126,13 @@ textarea{min-height:64px;resize:vertical}
         <div class="fld"><label class="lbl" for="h-date" id="x-h-date"></label><input type="date" id="h-date" required></div>
         <div class="fld"><label class="lbl" for="h-job" id="x-h-job"></label><select id="h-job" required></select></div>
       </div>
+      <span class="lbl" id="x-h-step"></span>
+      <div class="steps" id="h-steps"></div>
       <span class="lbl" id="x-h-who"></span>
       <div class="crew" id="h-crew"></div>
       <p class="hint" id="x-h-hint"></p>
       <button type="button" class="quiet" id="h-all" style="margin-top:.7rem"></button>
-      <div class="sum"><span class="lbl" style="margin:0" id="x-h-tot"></span><b id="h-total">0 h</b></div>
+      <div class="sum"><span class="lbl" style="margin:0" id="x-h-tot"></span><b id="h-total">0</b></div>
       <button type="submit" class="go" id="h-save"></button>
     </form>
     <p class="sec" id="h-sec" hidden></p>
@@ -132,6 +143,11 @@ textarea{min-height:64px;resize:vertical}
     <div id="g-setup" class="card" hidden><div class="empty"><strong id="x-gs-t"></strong><span id="x-gs-b"></span></div>
       <button class="go" data-goto="setup" id="x-gs-btn"></button></div>
     <form id="g-form" class="card" hidden>
+      <div class="photo" id="g-photo-box">
+        <label for="g-photo"><span id="x-g-photo"></span></label>
+        <img id="g-thumb" alt="" hidden>
+        <input type="file" id="g-photo" accept="image/*" capture="environment">
+      </div>
       <div class="two">
         <div class="fld"><label class="lbl" for="g-date" id="x-g-date"></label><input type="date" id="g-date" required></div>
         <div class="fld"><label class="lbl" for="g-job" id="x-g-job"></label><select id="g-job" required></select></div>
@@ -141,8 +157,11 @@ textarea{min-height:64px;resize:vertical}
         <div class="fld"><label class="lbl" for="g-cat" id="x-g-cat"></label><select id="g-cat" required></select></div>
       </div>
       <datalist id="vendors"></datalist>
-      <div class="fld"><label class="lbl" for="g-amt" id="x-g-amt"></label>
-        <div class="money"><span>$</span><input id="g-amt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required></div></div>
+      <div class="two">
+        <div class="fld"><label class="lbl" for="g-amt" id="x-g-amt"></label>
+          <div class="money"><span>$</span><input id="g-amt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required></div></div>
+        <div class="fld"><label class="lbl" for="g-step" id="x-g-step"></label><select id="g-step"></select></div>
+      </div>
       <div class="fld"><label class="lbl" for="g-note" id="x-g-note"></label><textarea id="g-note"></textarea></div>
       <button type="submit" class="go" id="g-save"></button>
     </form>
@@ -172,42 +191,49 @@ textarea{min-height:64px;resize:vertical}
 (function(){
 "use strict";
 var CATS=["material","rental","fuel","tool","dumpster","permit","sub","other"];
+var STEPS=["hang","finish","plaster","stucco"];
 var T={
-en:{loc:"en-US",sub:"Daily job log",tabH:"Hours",tabG:"Expenses",tabS:"Setup",
+en:{loc:"en-US",sub:"Daily job log",tabH:"Crew",tabG:"Expenses",tabS:"Setup",
  hsT:"Add jobs and crew first",hsB:"Open Setup and add the active jobs and the crew names.",
  gsT:"Add jobs first",gsB:"Open Setup and add the active jobs.",goSetup:"Go to setup",
- date:"Date",job:"Job",who:"Who worked",halves:"Tap a name for 8 h. Use − and + in half hours.",
- allEight:"8 h for everyone",dayTotal:"Day total",saveH:"Save hours",
- tDate:"Ticket date",vendor:"Supplier",cat:"Category",amount:"Ticket amount",
+ date:"Date",job:"Job",step:"Step",who:"Who worked",hint:"Tap each person who worked. Each one counts as one day.",
+ all:"Select everyone",dayTotal:"People on this job",saveH:"Save day",
+ splitWith:"split with ",
+ tDate:"Ticket date",vendor:"Supplier",cat:"Category",amount:"Ticket amount",stepOpt:"Step (optional)",general:"General",
+ photo:"Take receipt photo",photoOk:"Photo ready — tap to retake",
  bought:"What was bought (optional)",boughtPh:"20 bags of base coat, 4 rolls of mesh",saveG:"Save expense",
- hoursOn:"Hours for ",ticketsOn:"Tickets for ",
+ daysOn:"Crew for ",ticketsOn:"Tickets for ",
  jobsLbl:"Active jobs",addJob:"Add",jobPh:"Street or client name",jobHint:"Use the name the crew already says.",
- crewLbl:"Crew",addPerson:"Add",crewPh:"First and last name",crewHint:"One person per line, so each person's hours count separately.",
- setupNote:"Removing a job or a person keeps their hours and tickets in the history.",
- yes:"Yes",no:"No",del:"Delete",pending:"waiting to send",
- saved1:"1 entry saved",savedN:" entries saved",ticketSaved:"Ticket saved",deleted:"Deleted",added:"Added",
+ crewLbl:"Crew",addPerson:"Add",crewPh:"First and last name",crewHint:"One person per line, so each person's days count separately.",
+ setupNote:"Removing a job or a person keeps their days and tickets in the history.",
+ yes:"Yes",no:"No",del:"Delete",pending:"waiting to send",withPhoto:"photo",
+ saved1:"1 person saved",savedN:" people saved",ticketSaved:"Ticket saved",deleted:"Deleted",added:"Added",
  pickJob:"Choose job",
- synced:"All sent",waiting:function(n){return n+(n===1?" entry":" entries")+" waiting for signal. Saved on this phone."},
+ synced:"All sent",waiting:function(n){return n+(n===1?" item":" items")+" waiting for signal. Saved on this phone."},
  sending:"Sending…",retry:"Send now",
  nocfg:"This phone is not linked yet. Open the setup link Giancarlo sent, then add it to the Home Screen from that page.",
+ s:{hang:"Hang",finish:"Tape & finish",plaster:"Lath & plaster",stucco:"Stucco finish"},
  c:{material:"Material",rental:"Equipment rental",fuel:"Fuel",tool:"Tool",dumpster:"Dumpster",permit:"Permit",sub:"Outside labor",other:"Other"}},
-es:{loc:"es-MX",sub:"Registro diario de obra",tabH:"Horas",tabG:"Gastos",tabS:"Ajustes",
+es:{loc:"es-MX",sub:"Registro diario de obra",tabH:"Cuadrilla",tabG:"Gastos",tabS:"Ajustes",
  hsT:"Primero agrega obras y cuadrilla",hsB:"Entra a Ajustes y agrega las obras activas y los nombres de la cuadrilla.",
  gsT:"Primero agrega las obras",gsB:"Entra a Ajustes y agrega las obras activas.",goSetup:"Ir a ajustes",
- date:"Fecha",job:"Obra",who:"Quién trabajó",halves:"Toca un nombre para 8 h. Usa − y + en medias horas.",
- allEight:"8 h a todos",dayTotal:"Total del día",saveH:"Guardar horas",
- tDate:"Fecha del ticket",vendor:"Proveedor",cat:"Categoría",amount:"Monto del ticket",
+ date:"Fecha",job:"Obra",step:"Etapa",who:"Quién trabajó",hint:"Toca a cada persona que trabajó. Cada una cuenta como un día.",
+ all:"Marcar a todos",dayTotal:"Personas en esta obra",saveH:"Guardar día",
+ splitWith:"día dividido con ",
+ tDate:"Fecha del ticket",vendor:"Proveedor",cat:"Categoría",amount:"Monto del ticket",stepOpt:"Etapa (opcional)",general:"General",
+ photo:"Tomar foto del ticket",photoOk:"Foto lista — toca para repetir",
  bought:"Qué se compró (opcional)",boughtPh:"20 sacos de base coat, 4 rollos de malla",saveG:"Guardar gasto",
- hoursOn:"Horas del ",ticketsOn:"Tickets del ",
+ daysOn:"Cuadrilla del ",ticketsOn:"Tickets del ",
  jobsLbl:"Obras activas",addJob:"Agregar",jobPh:"Calle o apellido del cliente",jobHint:"Usa el nombre que la cuadrilla ya dice.",
- crewLbl:"Cuadrilla",addPerson:"Agregar",crewPh:"Nombre y apellido",crewHint:"Una persona por renglón, para que las horas de cada quien cuenten aparte.",
- setupNote:"Al quitar una obra o una persona, sus horas y tickets se quedan en el historial.",
- yes:"Sí",no:"No",del:"Borrar",pending:"por enviar",
- saved1:"1 registro guardado",savedN:" registros guardados",ticketSaved:"Ticket guardado",deleted:"Borrado",added:"Agregado",
+ crewLbl:"Cuadrilla",addPerson:"Agregar",crewPh:"Nombre y apellido",crewHint:"Una persona por renglón, para que los días de cada quien cuenten aparte.",
+ setupNote:"Al quitar una obra o una persona, sus días y tickets se quedan en el historial.",
+ yes:"Sí",no:"No",del:"Borrar",pending:"por enviar",withPhoto:"foto",
+ saved1:"1 persona guardada",savedN:" personas guardadas",ticketSaved:"Ticket guardado",deleted:"Borrado",added:"Agregado",
  pickJob:"Elegir obra",
  synced:"Todo enviado",waiting:function(n){return n+(n===1?" registro espera":" registros esperan")+" señal. Ya están guardados en el teléfono."},
  sending:"Enviando…",retry:"Enviar ya",
  nocfg:"Este teléfono todavía no está conectado. Abre el enlace que mandó Giancarlo y desde esa página agrégalo a la pantalla de inicio.",
+ s:{hang:"Colgar tablaroca",finish:"Cinta y acabado",plaster:"Malla y aplanado",stucco:"Acabado de estuco"},
  c:{material:"Material",rental:"Renta de equipo",fuel:"Combustible",tool:"Herramienta",dumpster:"Dumpster",permit:"Permiso",sub:"Mano de obra externa",other:"Otro"}}
 };
 
@@ -218,8 +244,31 @@ function iso(d){var p=function(n){return(n<10?"0":"")+n};return d.getFullYear()+
 function nid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function money(n){return"$"+(Number(n)||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",")}
-function hrs(n){return String(Math.round(Number(n)*2)/2)}
 function dayName(s){var p=String(s).split("-");return new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString(L.loc,{weekday:"long",day:"numeric",month:"long"})}
+
+/* ---------- photo store (IndexedDB, survives no signal) ---------- */
+var idb=null;
+function db(){if(idb)return idb;idb=new Promise(function(res,rej){
+  if(!window.indexedDB)return rej();var r=indexedDB.open("jj-obra",1);
+  r.onupgradeneeded=function(){r.result.createObjectStore("photos")};
+  r.onsuccess=function(){res(r.result)};r.onerror=function(){rej(r.error)}});return idb}
+function tx(mode,fn){return db().then(function(d){return new Promise(function(res,rej){
+  var t=d.transaction("photos",mode),s=t.objectStore("photos"),out=fn(s);
+  t.oncomplete=function(){res(out&&out.result)};t.onerror=function(){rej(t.error)}})})}
+function photoPut(id,data){return tx("readwrite",function(s){s.put(data,id)})}
+function photoDel(id){return tx("readwrite",function(s){s.delete(id)})}
+function photoKeys(){return tx("readonly",function(s){return s.getAllKeys()}).catch(function(){return[]})}
+function photoGet(id){return tx("readonly",function(s){return s.get(id)})}
+var PHOTO_N=0;
+function countPhotos(){return photoKeys().then(function(k){PHOTO_N=(k||[]).length;syncUI()})}
+
+function shrink(file){return new Promise(function(res,rej){
+  var url=URL.createObjectURL(file),img=new Image();
+  img.onload=function(){var m=1600,w=img.naturalWidth,h=img.naturalHeight,s=Math.min(1,m/Math.max(w,h));
+    var c=document.createElement("canvas");c.width=Math.round(w*s);c.height=Math.round(h*s);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);
+    res(c.toDataURL("image/jpeg",0.72))};
+  img.onerror=function(){URL.revokeObjectURL(url);rej()};img.src=url})}
 
 /* ---------- device link: ?s=<base64url JSON {u,k,n,l}> ---------- */
 var CFG=null;
@@ -237,60 +286,65 @@ var LANG=lsGet("jj.lang",null)||(CFG&&CFG.l)||"es";if(!T[LANG])LANG="es";
 var L=T[LANG];
 var TODAY=iso(new Date());
 
-/* ---------- state: server snapshot + local queue ---------- */
-var BASE=lsGet("jj.base",{jobs:[],crew:[],hours:[],costs:[]});
-var Q=lsGet("jj.queue",[]);
-var S={},sel={},pend=null,view="hours",busy=false;
+/* ---------- state ---------- */
+var TABLES=["jobs","crew","labor","costs"];
+var BASE=lsGet("jj.base2",{jobs:[],crew:[],labor:[],costs:[]});
+var Q=lsGet("jj.queue2",[]);
+var S={},sel={},pend=null,view="labor",busy=false,step=lsGet("jj.step","hang"),photo=null;
 
 function rebuild(){
   var m={};
-  ["jobs","crew","hours","costs"].forEach(function(t){m[t]={};(BASE[t]||[]).forEach(function(r){m[t][r.id]=r})});
+  TABLES.forEach(function(t){m[t]={};(BASE[t]||[]).forEach(function(r){m[t][r.id]=r})});
   Q.forEach(function(op){if(op.a==="del")delete m[op.t][op.id];else m[op.t][op.id]=op.d});
-  ["jobs","crew","hours","costs"].forEach(function(t){S[t]=Object.keys(m[t]).map(function(k){return m[t][k]})});
+  TABLES.forEach(function(t){S[t]=Object.keys(m[t]).map(function(k){return m[t][k]})});
   S.jobs=S.jobs.filter(function(r){return r.active!==false}).sort(byName);
   S.crew=S.crew.filter(function(r){return r.active!==false}).sort(byName);
   S.pendIds={};Q.forEach(function(op){S.pendIds[op.t+"/"+op.id]=1});
 }
 function byName(a,b){return String(a.name).localeCompare(String(b.name))}
-
-function queue(op){
-  Q=Q.filter(function(o){return!(o.t===op.t&&o.id===op.id)});
-  Q.push(op);lsSet("jj.queue",Q);rebuild();render();flush();
-}
+function queue(op){Q=Q.filter(function(o){return!(o.t===op.t&&o.id===op.id)});Q.push(op);lsSet("jj.queue2",Q)}
+function commit(){rebuild();render();flush()}
 
 /* ---------- sync ---------- */
+function post(body){return fetch(CFG.u,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+  body:JSON.stringify(Object.assign({k:CFG.k,dev:CFG.n||""},body))}).then(function(r){return r.json()})}
 function flush(){
   if(!CFG||busy)return Promise.resolve();
-  if(!Q.length)return pull();
   busy=true;syncUI();
   var batch=Q.slice(0,40);
-  return fetch(CFG.u,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body:JSON.stringify({k:CFG.k,dev:CFG.n||"",ops:batch})})
-  .then(function(r){return r.json()})
-  .then(function(res){
-    if(!res||!res.ok)throw new Error(res&&res.err||"fail");
-    var sent={};batch.forEach(function(o){sent[o.t+"/"+o.id+"/"+o.ts]=1});
-    batch.forEach(function(o){
-      var b=BASE[o.t];var i=b.findIndex(function(r){return r.id===o.id});
-      if(o.a==="del"){if(i>=0)b.splice(i,1)}else{if(i>=0)b[i]=o.d;else b.push(o.d)}
-    });
+  var p=batch.length?post({ops:batch}).then(function(res){
+    if(!res||!res.ok)throw new Error("fail");
+    var sent={};batch.forEach(function(o){sent[o.t+"/"+o.id+"/"+o.ts]=1;
+      var b=BASE[o.t],i=b.findIndex(function(r){return r.id===o.id});
+      if(o.a==="del"){if(i>=0)b.splice(i,1)}else{if(i>=0)b[i]=o.d;else b.push(o.d)}});
     Q=Q.filter(function(o){return!sent[o.t+"/"+o.id+"/"+o.ts]});
-    lsSet("jj.queue",Q);lsSet("jj.base",BASE);busy=false;rebuild();render();
-    return Q.length?flush():pull();
-  })
-  .catch(function(){busy=false;syncUI()});
+    lsSet("jj.queue2",Q);lsSet("jj.base2",BASE);
+  }):Promise.resolve();
+  return p.then(sendPhotos).then(function(){busy=false;rebuild();render();
+      if(Q.length)return flush();return pull()})
+    .catch(function(){busy=false;syncUI()});
+}
+function sendPhotos(){
+  return photoKeys().then(function(keys){
+    var chain=Promise.resolve();
+    (keys||[]).forEach(function(id){
+      if(Q.some(function(o){return o.t==="costs"&&o.id===id}))return;
+      chain=chain.then(function(){return photoGet(id)}).then(function(data){
+        if(!data)return photoDel(id);
+        return post({a:"photo",id:id,data:String(data).split(",")[1],mime:"image/jpeg"}).then(function(r){
+          if(!r||!r.ok)throw new Error("photo");return photoDel(id)})});
+    });
+    return chain;
+  }).then(countPhotos);
 }
 function pull(){
   if(!CFG)return Promise.resolve();
-  return fetch(CFG.u+"?k="+encodeURIComponent(CFG.k)+"&a=pull")
-  .then(function(r){return r.json()})
-  .then(function(res){if(!res||!res.ok)return;
-    BASE={jobs:res.jobs||[],crew:res.crew||[],hours:res.hours||[],costs:res.costs||[]};
-    lsSet("jj.base",BASE);rebuild();render();})
-  .catch(function(){});
+  return post({a:"pull"}).then(function(res){if(!res||!res.ok)return;
+    BASE={jobs:res.jobs||[],crew:res.crew||[],labor:res.labor||[],costs:res.costs||[]};
+    lsSet("jj.base2",BASE);rebuild();render();}).catch(function(){});
 }
 function syncUI(){
-  var el=$("sync"),n=Q.length;
+  var el=$("sync"),n=Q.length+PHOTO_N;
   if(!CFG){el.hidden=true;return}
   el.hidden=false;el.classList.toggle("wait",n>0);
   $("sync-t").textContent=busy?L.sending:(n?L.waiting(n):L.synced);
@@ -299,33 +353,34 @@ function syncUI(){
 $("sync-b").addEventListener("click",flush);
 window.addEventListener("online",flush);
 document.addEventListener("visibilitychange",function(){if(!document.hidden)flush()});
-setInterval(function(){if(!document.hidden&&Q.length)flush()},30000);
+setInterval(function(){if(!document.hidden&&(Q.length||PHOTO_N))flush()},30000);
 
 /* ---------- UI ---------- */
 var tO;function toast(m){var t=$("toast");t.textContent=m;t.classList.add("up");clearTimeout(tO);tO=setTimeout(function(){t.classList.remove("up")},2400)}
-
 function setLang(v){LANG=v;L=T[v];lsSet("jj.lang",v);document.documentElement.lang=v;staticText();render()}
 $("lang-en").addEventListener("click",function(){setLang("en")});
 $("lang-es").addEventListener("click",function(){setLang("es")});
 
 function staticText(){
   $("lang-en").setAttribute("aria-pressed",LANG==="en");$("lang-es").setAttribute("aria-pressed",LANG==="es");
-  var m={"x-sub":"sub","tab-hours":"tabH","tab-costs":"tabG","tab-setup":"tabS","x-hs-t":"hsT","x-hs-b":"hsB","x-hs-btn":"goSetup",
-    "x-gs-t":"gsT","x-gs-b":"gsB","x-gs-btn":"goSetup","x-h-date":"date","x-h-job":"job","x-h-who":"who","x-h-hint":"halves",
-    "h-all":"allEight","x-h-tot":"dayTotal","h-save":"saveH","x-g-date":"tDate","x-g-job":"job","x-g-vendor":"vendor","x-g-cat":"cat",
-    "x-g-amt":"amount","x-g-note":"bought","g-save":"saveG","x-a-jobs":"jobsLbl","a-job-add":"addJob","x-a-jobhint":"jobHint",
+  var m={"x-sub":"sub","tab-labor":"tabH","tab-costs":"tabG","tab-setup":"tabS","x-hs-t":"hsT","x-hs-b":"hsB","x-hs-btn":"goSetup",
+    "x-gs-t":"gsT","x-gs-b":"gsB","x-gs-btn":"goSetup","x-h-date":"date","x-h-job":"job","x-h-step":"step","x-h-who":"who","x-h-hint":"hint",
+    "h-all":"all","x-h-tot":"dayTotal","h-save":"saveH","x-g-date":"tDate","x-g-job":"job","x-g-vendor":"vendor","x-g-cat":"cat",
+    "x-g-amt":"amount","x-g-step":"stepOpt","x-g-note":"bought","g-save":"saveG","x-a-jobs":"jobsLbl","a-job-add":"addJob","x-a-jobhint":"jobHint",
     "x-a-crew":"crewLbl","a-crew-add":"addPerson","x-a-crewhint":"crewHint","x-a-note":"setupNote","nocfg":"nocfg"};
   for(var id in m)$(id).textContent=L[m[id]];
+  $("x-g-photo").textContent=photo?L.photoOk:L.photo;
   $("g-note").placeholder=L.boughtPh;$("a-job").placeholder=L.jobPh;$("a-crew").placeholder=L.crewPh;
   var cur=$("g-cat").value||"material";
-  $("g-cat").innerHTML=CATS.map(function(k){return'<option value="'+k+'">'+esc(L.c[k])+'</option>'}).join("");
-  $("g-cat").value=cur;
+  $("g-cat").innerHTML=CATS.map(function(k){return'<option value="'+k+'">'+esc(L.c[k])+'</option>'}).join("");$("g-cat").value=cur;
+  var cs=$("g-step").value||"";
+  $("g-step").innerHTML='<option value="">'+esc(L.general)+'</option>'+STEPS.map(function(k){return'<option value="'+k+'">'+esc(L.s[k])+'</option>'}).join("");$("g-step").value=cs;
 }
 
 function show(v){view=v;pend=null;
-  ["hours","costs","setup"].forEach(function(k){$("v-"+k).hidden=k!==v;$("tab-"+k).setAttribute("aria-selected",k===v)});
+  ["labor","costs","setup"].forEach(function(k){$("v-"+k).hidden=k!==v;$("tab-"+k).setAttribute("aria-selected",k===v)});
   window.scrollTo(0,0);render()}
-["hours","costs","setup"].forEach(function(k){$("tab-"+k).addEventListener("click",function(){show(k)})});
+["labor","costs","setup"].forEach(function(k){$("tab-"+k).addEventListener("click",function(){show(k)})});
 document.addEventListener("click",function(e){var b=e.target.closest("[data-goto]");if(b)show(b.getAttribute("data-goto"))});
 
 function jobOpts(s){var cur=s.value;
@@ -333,14 +388,20 @@ function jobOpts(s){var cur=s.value;
   if(cur&&S.jobs.some(function(j){return j.id===cur}))s.value=cur;
   else{var last=lsGet("jj.lastJob","");if(last&&S.jobs.some(function(j){return j.id===last}))s.value=last}}
 
+function laborOn(date){return S.labor.filter(function(r){return r.date===date})}
+function otherJobs(date,wid,jid){var o={};laborOn(date).forEach(function(r){if(r.workerId===wid&&r.jobId!==jid)o[r.jobName]=1});return Object.keys(o)}
+
+function renderSteps(){
+  $("h-steps").innerHTML=STEPS.map(function(k){return'<button type="button" data-step="'+k+'" aria-pressed="'+(k===step)+'">'+esc(L.s[k])+'</button>'}).join("");
+}
 function renderCrew(){
-  var box=$("h-crew");
-  box.innerHTML=S.crew.map(function(w){var h=sel[w.id],on=h!=null;
+  var date=$("h-date").value,jid=$("h-job").value;
+  $("h-crew").innerHTML=S.crew.map(function(w){var on=!!sel[w.id],oth=jid?otherJobs(date,w.id,jid):[];
     return'<div class="row'+(on?" on":"")+'"><button type="button" class="pick" data-tog="'+esc(w.id)+'" aria-pressed="'+on+'"><span class="box"></span><span class="nm">'+esc(w.name)+'</span></button>'+
-    (on?'<div class="step"><button type="button" data-dec="'+esc(w.id)+'" aria-label="-0.5">−</button><output>'+hrs(h)+' h</output><button type="button" data-inc="'+esc(w.id)+'" aria-label="+0.5">+</button></div>':'')+'</div>'}).join("");
-  var tot=0;for(var k in sel)tot+=sel[k];
-  $("h-total").textContent=hrs(tot)+" h";
-  $("h-save").disabled=!(tot>0&&$("h-job").value&&$("h-date").value);
+    (oth.length?'<span class="split">'+esc(L.splitWith+oth.join(", "))+'</span>':'')+'</div>'}).join("");
+  var n=Object.keys(sel).length;
+  $("h-total").textContent=String(n);
+  $("h-save").disabled=!(n>0&&jid&&date);
 }
 
 function item(o){
@@ -351,12 +412,15 @@ function item(o){
 }
 
 function renderLogs(){
-  var d=$("h-date").value||TODAY,hs=S.hours.filter(function(r){return r.date===d}).sort(function(a,b){return String(a.workerName).localeCompare(b.workerName)});
-  $("h-sec").hidden=!hs.length;$("h-sec").textContent=L.hoursOn+dayName(d);
-  $("h-log").innerHTML=hs.map(function(r){return item({key:"hours/"+r.id,t:r.workerName,s:r.jobName,v:hrs(r.hours)+" h"})}).join("");
+  var d=$("h-date").value||TODAY,hs=laborOn(d).sort(function(a,b){return String(a.workerName).localeCompare(b.workerName)});
+  var cnt={};hs.forEach(function(r){cnt[r.workerId]=(cnt[r.workerId]||0)+1});
+  $("h-sec").hidden=!hs.length;$("h-sec").textContent=L.daysOn+dayName(d);
+  $("h-log").innerHTML=hs.map(function(r){var n=cnt[r.workerId];
+    return item({key:"labor/"+r.id,t:r.workerName,s:r.jobName+" · "+(L.s[r.step]||r.step),v:n>1?"1/"+n:"1"})}).join("");
   var g=$("g-date").value||TODAY,gs=S.costs.filter(function(r){return r.date===g});
   $("g-sec").hidden=!gs.length;$("g-sec").textContent=L.ticketsOn+dayName(g);
-  $("g-log").innerHTML=gs.map(function(r){return item({key:"costs/"+r.id,t:r.vendor+" · "+(L.c[r.category]||r.category),s:r.jobName+(r.note?" — "+r.note:""),v:money(r.amount)})}).join("");
+  $("g-log").innerHTML=gs.map(function(r){return item({key:"costs/"+r.id,t:r.vendor+" · "+(L.c[r.category]||r.category),
+    s:r.jobName+(r.step?" · "+(L.s[r.step]||r.step):"")+(r.hasPhoto?" · "+L.withPhoto:"")+(r.note?" — "+r.note:""),v:money(r.amount)})}).join("");
 }
 
 function render(){
@@ -366,24 +430,24 @@ function render(){
   jobOpts($("h-job"));jobOpts($("g-job"));
   var vs={};S.costs.forEach(function(r){if(r.vendor)vs[r.vendor]=1});
   $("vendors").innerHTML=Object.keys(vs).sort().map(function(v){return'<option value="'+esc(v)+'">'}).join("");
-  renderCrew();renderLogs();
+  renderSteps();renderCrew();renderLogs();
   $("a-jobs").innerHTML=S.jobs.map(function(j){return item({key:"jobs/"+j.id,t:j.name,s:"",v:""})}).join("");
   $("a-crew-list").innerHTML=S.crew.map(function(w){return item({key:"crew/"+w.id,t:w.name,s:"",v:""})}).join("");
   syncUI();
 }
 
-$("h-crew").addEventListener("click",function(e){
-  var t=e.target.closest("[data-tog]"),i=e.target.closest("[data-inc]"),d=e.target.closest("[data-dec]");
-  if(t){var id=t.getAttribute("data-tog");if(sel[id]!=null)delete sel[id];else sel[id]=8}
-  else if(i){var a=i.getAttribute("data-inc");sel[a]=Math.min(24,(sel[a]||0)+.5)}
-  else if(d){var b=d.getAttribute("data-dec"),v=(sel[b]||0)-.5;if(v<=0)delete sel[b];else sel[b]=v}
-  else return;renderCrew();
-});
-$("h-all").addEventListener("click",function(){S.crew.forEach(function(w){sel[w.id]=8});renderCrew()});
+$("h-steps").addEventListener("click",function(e){var b=e.target.closest("[data-step]");if(!b)return;step=b.getAttribute("data-step");lsSet("jj.step",step);renderSteps()});
+$("h-crew").addEventListener("click",function(e){var t=e.target.closest("[data-tog]");if(!t)return;
+  var id=t.getAttribute("data-tog");if(sel[id])delete sel[id];else sel[id]=1;renderCrew()});
+$("h-all").addEventListener("click",function(){S.crew.forEach(function(w){sel[w.id]=1});renderCrew()});
 $("h-job").addEventListener("change",function(){lsSet("jj.lastJob",this.value);$("g-job").value=this.value;renderCrew()});
 $("g-job").addEventListener("change",function(){lsSet("jj.lastJob",this.value)});
 $("h-date").addEventListener("change",function(){renderLogs();renderCrew()});
 $("g-date").addEventListener("change",renderLogs);
+
+$("g-photo").addEventListener("change",function(){var f=this.files&&this.files[0];if(!f)return;
+  shrink(f).then(function(d){photo=d;$("g-thumb").src=d;$("g-thumb").hidden=false;$("g-photo-box").classList.add("has");$("x-g-photo").textContent=L.photoOk})
+  .catch(function(){photo=null})});
 
 document.addEventListener("click",function(e){
   var a=e.target.closest("[data-ask]"),c=e.target.closest("[data-cancel]"),d=e.target.closest("[data-del]");
@@ -392,40 +456,43 @@ document.addEventListener("click",function(e){
   else if(d){var p=d.getAttribute("data-del").split("/"),t=p[0],id=p[1];pend=null;
     if(t==="jobs"||t==="crew"){var r=S[t].filter(function(x){return x.id===id})[0];
       if(r)queue({t:t,a:"put",id:id,ts:Date.now(),d:Object.assign({},r,{active:false,updatedAt:new Date().toISOString()})})}
-    else queue({t:t,a:"del",id:id,ts:Date.now()});
-    toast(L.deleted)}
+    else{queue({t:t,a:"del",id:id,ts:Date.now()});if(t==="costs")photoDel(id).catch(function(){})}
+    commit();toast(L.deleted)}
 });
 
 $("h-form").addEventListener("submit",function(e){e.preventDefault();
   var date=$("h-date").value,jid=$("h-job").value,job=S.jobs.filter(function(j){return j.id===jid})[0];
   var ids=Object.keys(sel);if(!job||!date||!ids.length)return;
   var now=new Date().toISOString();
-  ids.forEach(function(wid){var w=S.crew.filter(function(x){return x.id===wid})[0],id=date+"_"+jid+"_"+wid;
-    Q=Q.filter(function(o){return!(o.t==="hours"&&o.id===id)});
-    Q.push({t:"hours",a:"put",id:id,ts:Date.now(),d:{id:id,date:date,jobId:jid,jobName:job.name,workerId:wid,workerName:w?w.name:wid,hours:sel[wid],savedAt:now}})});
-  lsSet("jj.queue",Q);var n=ids.length;sel={};rebuild();render();flush();
-  toast(n===1?L.saved1:n+L.savedN);
+  ids.forEach(function(wid){var w=S.crew.filter(function(x){return x.id===wid})[0],id=date+"_"+jid+"_"+step+"_"+wid;
+    queue({t:"labor",a:"put",id:id,ts:Date.now(),d:{id:id,date:date,jobId:jid,jobName:job.name,step:step,workerId:wid,workerName:w?w.name:wid,days:1,savedAt:now}})});
+  var n=ids.length;sel={};commit();toast(n===1?L.saved1:n+L.savedN);
 });
 
 $("g-form").addEventListener("submit",function(e){e.preventDefault();
   var jid=$("g-job").value,job=S.jobs.filter(function(j){return j.id===jid})[0],amt=parseFloat($("g-amt").value);
   if(!job||!$("g-date").value||!(amt>0))return;
-  var id=nid();
-  queue({t:"costs",a:"put",id:id,ts:Date.now(),d:{id:id,date:$("g-date").value,jobId:jid,jobName:job.name,
-    vendor:$("g-vendor").value.trim(),category:$("g-cat").value,amount:Math.round(amt*100)/100,
-    note:$("g-note").value.trim(),savedAt:new Date().toISOString()}});
-  $("g-vendor").value="";$("g-amt").value="";$("g-note").value="";toast(L.ticketSaved);
+  var id=nid(),ph=photo;
+  var save=ph?photoPut(id,ph).then(function(){return true}).catch(function(){return false}):Promise.resolve(false);
+  save.then(function(hasPhoto){
+    queue({t:"costs",a:"put",id:id,ts:Date.now(),d:{id:id,date:$("g-date").value,jobId:jid,jobName:job.name,step:$("g-step").value,
+      vendor:$("g-vendor").value.trim(),category:$("g-cat").value,amount:Math.round(amt*100)/100,
+      note:$("g-note").value.trim(),hasPhoto:hasPhoto,savedAt:new Date().toISOString()}});
+    $("g-vendor").value="";$("g-amt").value="";$("g-note").value="";$("g-photo").value="";
+    photo=null;$("g-thumb").hidden=true;$("g-photo-box").classList.remove("has");$("x-g-photo").textContent=L.photo;
+    countPhotos();commit();toast(L.ticketSaved);
+  });
 });
 
 function addRow(t,inp){var v=$(inp).value.trim();if(!v)return;var id=nid(),now=new Date().toISOString();
-  queue({t:t,a:"put",id:id,ts:Date.now(),d:{id:id,name:v,active:true,createdAt:now,updatedAt:now}});$(inp).value="";toast(L.added)}
+  queue({t:t,a:"put",id:id,ts:Date.now(),d:{id:id,name:v,active:true,createdAt:now,updatedAt:now}});$(inp).value="";commit();toast(L.added)}
 $("a-job-add").addEventListener("click",function(){addRow("jobs","a-job")});
 $("a-crew-add").addEventListener("click",function(){addRow("crew","a-crew")});
 ["a-job","a-crew"].forEach(function(id){$(id).addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();$(id+"-add").click()}})});
 
 /* ---------- boot ---------- */
 $("h-date").value=TODAY;$("g-date").value=TODAY;document.documentElement.lang=LANG;
-rebuild();staticText();render();flush();
+rebuild();staticText();render();countPhotos().then(flush);
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){});
 })();
 </script>
